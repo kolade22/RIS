@@ -1,6 +1,27 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function sameUser(userId) { return signedIn() && request.auth.uid == userId; }
+    function activeMember(tenantId) {
+      return signedIn() && get(/databases/$(database)/documents/tenants/$(tenantId)/memberships/$(request.auth.uid)).data.status == 'active';
+    }
+
+    match /users/{userId} {
+      allow read: if sameUser(userId);
+      allow create, update, delete: if false;
+    }
+
+    match /tenants/{tenantId}/memberships/{userId} {
+      allow read: if sameUser(userId) || activeMember(tenantId) && resource.data.role == 'tenant_admin';
+      allow create, update, delete: if false;
+    }
+
+    match /tenants/{tenantId} {
+      allow read: if activeMember(tenantId);
+      allow create, update, delete: if false;
+    }
+
     match /{document=**} { allow read, write: if false; }
   }
 }

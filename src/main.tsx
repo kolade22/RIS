@@ -1,11 +1,13 @@
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth'
 import {
   Activity, ArrowDownToLine, ArrowUpRight, Banknote, BarChart3, Bell, Boxes,
   CalendarDays, ChevronDown, ClipboardList, Clock3, FileText, LayoutDashboard,
   Menu, MoreHorizontal, Package, Plus, Search, Settings2, ShieldCheck,
   Stethoscope, Users, WalletCards, X
 } from 'lucide-react'
+import { auth, firebaseConfigured } from './lib/firebase'
 import './styles.css'
 
 type QueueStatus = 'Waiting' | 'In progress' | 'Ready'
@@ -58,9 +60,29 @@ function App() {
   </div>
 }
 
+function AuthView() {
+  const [recovery, setRecovery] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [demo, setDemo] = useState(false)
+
+  if (demo) return <App />
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault(); setBusy(true); setMessage('')
+    try {
+      if (recovery) { await sendPasswordResetEmail(auth, email); setMessage('If an account exists for this email, a reset link has been sent.') }
+      else await signInWithEmailAndPassword(auth, email, password)
+    } catch { setMessage('Sign-in could not be completed. Check your details or contact your tenant administrator.') }
+    finally { setBusy(false) }
+  }
+  return <div className="auth-shell"><div className="auth-aside"><div className="brand"><div className="brand-mark"><Activity size={19} strokeWidth={2.5} /></div><span>radial<span className="brand-dot">.</span></span></div><div className="auth-quote"><span>OPERATIONS / RADIOLOGY</span><h1>Keep the department moving.</h1><p>One clear view of patients, examinations, stock, and the shift ahead.</p></div><div className="auth-aside-foot"><span className="secure-dot" /> Tenant-isolated workspace</div></div><main className="auth-main"><div className="auth-card"><div className="auth-mobile-brand"><div className="brand-mark"><Activity size={19} /></div><span>radial<span className="brand-dot">.</span></span></div><span className="auth-kicker">{recovery ? 'ACCOUNT RECOVERY' : 'WELCOME BACK'}</span><h2>{recovery ? 'Reset your password' : 'Sign in to Radial'}</h2><p className="auth-description">{recovery ? 'Enter your work email and we will send instructions to reset your password.' : 'Use your staff account to access your operations workspace.'}</p><form onSubmit={submit}><label>Work email<input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourcentre.com" /></label>{!recovery && <label>Password<input type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" /></label>}{message && <div className="auth-message" role="status">{message}</div>}<button className="primary-button auth-submit" disabled={busy}>{busy ? 'Working…' : recovery ? 'Send reset link' : 'Sign in'}</button></form><button className="auth-link" onClick={() => { setRecovery(!recovery); setMessage('') }}>{recovery ? 'Back to sign in' : 'Forgot your password?'}</button>{!firebaseConfigured && <div className="demo-box"><strong>Local demo mode</strong><span>Firebase is not configured in this environment.</span><button onClick={() => setDemo(true)}>Continue to workspace <ArrowUpRight size={14} /></button></div>}</div><div className="auth-footer">Radial v0.1 · Compliance-oriented technical controls · Not a certification</div></main></div>
+}
+
 function Metric({ label, value, change, detail, icon, tone, alert = false }: { label: string; value: string; change: string; detail: string; icon: React.ReactNode; tone: string; alert?: boolean }) { return <article className={`metric-card ${tone}`}><div className="metric-top"><span className="metric-icon">{icon}</span>{alert && <span className="attention">Attention</span>}</div><span className="metric-label">{label}</span><strong className="metric-value">{value}</strong><div className="metric-detail"><b>{change}</b> {detail}</div></article> }
 function Status({ status }: { status: QueueStatus }) { return <span className={`status-pill ${status.toLowerCase().replace(' ', '-')}`}><span />{status}</span> }
 function Stock({ name, location, current, total, percentage, tone }: { name: string; location: string; current: string; total: string; percentage: number; tone: string }) { return <div className="stock-row"><div className="stock-info"><div><strong>{name}</strong><span>{location}</span></div><b className={tone}>{current} <small>/ {total}</small></b></div><div className="progress-track"><i className={tone} style={{ width: `${percentage}%` }} /></div><div className="stock-foot"><span>{percentage < 50 ? 'Below reorder level' : 'Healthy stock level'}</span><small>{percentage}% remaining</small></div></div> }
 function ActivityItem({ icon, text, meta }: { icon: React.ReactNode; text: string; meta: string }) { return <div className="activity-item"><span className="activity-icon">{icon}</span><div><strong>{text}</strong><span>{meta}</span></div><ArrowUpRight size={14} /></div> }
 
-createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>)
+createRoot(document.getElementById('root')!).render(<StrictMode><AuthView /></StrictMode>)
