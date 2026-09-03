@@ -22,6 +22,11 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /tenants/{tenantId}/invitations/{invitationId} {
+      allow read: if signedIn() && request.auth.token.email == resource.data.email;
+      allow create, update, delete: if false;
+    }
+
     match /{document=**} { allow read, write: if false; }
   }
 }
