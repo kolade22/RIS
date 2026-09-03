@@ -1,5 +1,6 @@
 node_modules/
 dist/
+functions/lib/
 *.tsbuildinfo
 MASTER_BUILD_PROMPT.md
 radiology-ris-saas-project.md
